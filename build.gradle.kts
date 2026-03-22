@@ -18,23 +18,24 @@ buildscript {
         classpath(libs.build.ksp)
         classpath(libs.build.golang)
 
-        // Pin vulnerable buildscript transitive dependencies until upstream plugin stacks catch up.
-        classpath("com.google.code.gson:gson:2.11.0")
-        classpath("com.google.guava:guava:32.0.0-android")
-        classpath("com.google.protobuf:protobuf-java:3.25.5")
-        classpath("com.google.protobuf:protobuf-java-util:3.25.5")
-        classpath("commons-io:commons-io:2.14.0")
-        classpath("io.netty:netty-codec:4.1.129.Final")
-        classpath("io.netty:netty-codec-http:4.1.129.Final")
-        classpath("io.netty:netty-codec-http2:4.1.129.Final")
-        classpath("io.netty:netty-common:4.1.129.Final")
-        classpath("io.netty:netty-handler:4.1.129.Final")
+        // Pin vulnerable buildscript and annotation-processor transitives to patched versions.
+        classpath("com.google.code.gson:gson:2.13.2")
+        classpath("com.google.guava:guava:33.5.0-android")
+        classpath("com.google.protobuf:protobuf-java:3.25.8")
+        classpath("com.google.protobuf:protobuf-java-util:3.25.8")
+        classpath("commons-io:commons-io:2.21.0")
+        classpath("io.netty:netty-codec:4.1.131.Final")
+        classpath("io.netty:netty-codec-http:4.1.131.Final")
+        classpath("io.netty:netty-codec-http2:4.1.131.Final")
+        classpath("io.netty:netty-common:4.1.131.Final")
+        classpath("io.netty:netty-handler:4.1.131.Final")
+        classpath("org.apache.commons:commons-lang3:3.20.0")
         classpath("org.apache.commons:commons-compress:1.26.0")
         classpath("org.bitbucket.b_c:jose4j:0.9.6")
         classpath("org.bouncycastle:bcpkix-jdk18on:1.79")
         classpath("org.bouncycastle:bcprov-jdk18on:1.79")
         classpath("org.jdom:jdom2:2.0.6.1")
-        classpath("org.xerial:sqlite-jdbc:3.41.2.2")
+        classpath("org.xerial:sqlite-jdbc:3.51.3.0")
     }
 }
 

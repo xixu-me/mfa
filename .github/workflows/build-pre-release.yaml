@@ -65,17 +65,40 @@ jobs:
         run: ./gradlew --no-daemon app:assembleAlphaRelease
 
       - name: Tag Repo
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -fa Prerelease-alpha -m "Prerelease-alpha"
-          git push origin refs/tags/Prerelease-alpha --force
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const ref = "tags/Prerelease-alpha";
+            try {
+              await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref,
+              });
+              await github.rest.git.updateRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref,
+                sha: context.sha,
+                force: true,
+              });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/${ref}`,
+                sha: context.sha,
+              });
+            }
 
       - name: Upload Alpha
         uses: softprops/action-gh-release@v2
         if: ${{  success() }}
         with:
           tag_name: Prerelease-alpha
+          target_commitish: ${{ github.sha }}
           files: app/build/outputs/apk/alpha/release/*
           prerelease: true
           generate_release_notes: true

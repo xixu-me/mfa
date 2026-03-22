@@ -105,16 +105,39 @@ jobs:
         run: ./gradlew --no-daemon app:assembleMetaRelease
 
       - name: Tag Repo
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -fa "${{ inputs.release-tag }}" -m "${{ inputs.release-tag }}"
-          git push origin "refs/tags/${{ inputs.release-tag }}" --force
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const ref = "tags/${{ inputs.release-tag }}";
+            try {
+              await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref,
+              });
+              await github.rest.git.updateRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref,
+                sha: context.sha,
+                force: true,
+              });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/${ref}`,
+                sha: context.sha,
+              });
+            }
 
       - name: Upload Release
         uses: softprops/action-gh-release@v1
         if: ${{ success() }}
         with:
           tag_name: ${{ inputs.release-tag }}
+          target_commitish: ${{ github.sha }}
           files: app/build/outputs/apk/meta/release/*
           generate_release_notes: true
