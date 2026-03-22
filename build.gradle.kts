@@ -11,6 +11,33 @@ buildscript {
         google()
         maven("https://raw.githubusercontent.com/MetaCubeX/maven-backup/main/releases")
     }
+    configurations.classpath {
+        resolutionStrategy.force(
+            "com.google.code.gson:gson:2.13.2",
+            "com.google.guava:guava:33.5.0-android",
+            "com.google.protobuf:protobuf-java:3.25.8",
+            "com.google.protobuf:protobuf-java-util:3.25.8",
+            "commons-io:commons-io:2.21.0",
+            "io.netty:netty-buffer:4.1.131.Final",
+            "io.netty:netty-codec:4.1.131.Final",
+            "io.netty:netty-codec-http:4.1.131.Final",
+            "io.netty:netty-codec-http2:4.1.131.Final",
+            "io.netty:netty-codec-socks:4.1.131.Final",
+            "io.netty:netty-common:4.1.131.Final",
+            "io.netty:netty-handler:4.1.131.Final",
+            "io.netty:netty-handler-proxy:4.1.131.Final",
+            "io.netty:netty-resolver:4.1.131.Final",
+            "io.netty:netty-transport:4.1.131.Final",
+            "io.netty:netty-transport-native-unix-common:4.1.131.Final",
+            "org.apache.commons:commons-compress:1.26.0",
+            "org.apache.commons:commons-lang3:3.20.0",
+            "org.bitbucket.b_c:jose4j:0.9.6",
+            "org.bouncycastle:bcpkix-jdk18on:1.79",
+            "org.bouncycastle:bcprov-jdk18on:1.79",
+            "org.jdom:jdom2:2.0.6.1",
+            "org.xerial:sqlite-jdbc:3.51.3.0",
+        )
+    }
     dependencies {
         classpath(libs.build.android)
         classpath(libs.build.kotlin.common)
@@ -39,11 +66,41 @@ buildscript {
     }
 }
 
+// Keep vulnerable transitives off both plugin/buildscript and processor classpaths.
+val patchedDependencyCoordinates = listOf(
+    "com.google.code.gson:gson:2.13.2",
+    "com.google.guava:guava:33.5.0-android",
+    "com.google.protobuf:protobuf-java:3.25.8",
+    "com.google.protobuf:protobuf-java-util:3.25.8",
+    "commons-io:commons-io:2.21.0",
+    "io.netty:netty-buffer:4.1.131.Final",
+    "io.netty:netty-codec:4.1.131.Final",
+    "io.netty:netty-codec-http:4.1.131.Final",
+    "io.netty:netty-codec-http2:4.1.131.Final",
+    "io.netty:netty-codec-socks:4.1.131.Final",
+    "io.netty:netty-common:4.1.131.Final",
+    "io.netty:netty-handler:4.1.131.Final",
+    "io.netty:netty-handler-proxy:4.1.131.Final",
+    "io.netty:netty-resolver:4.1.131.Final",
+    "io.netty:netty-transport:4.1.131.Final",
+    "io.netty:netty-transport-native-unix-common:4.1.131.Final",
+    "org.apache.commons:commons-compress:1.26.0",
+    "org.apache.commons:commons-lang3:3.20.0",
+    "org.bitbucket.b_c:jose4j:0.9.6",
+    "org.bouncycastle:bcpkix-jdk18on:1.79",
+    "org.bouncycastle:bcprov-jdk18on:1.79",
+    "org.jdom:jdom2:2.0.6.1",
+    "org.xerial:sqlite-jdbc:3.51.3.0",
+)
+
 subprojects {
     repositories {
         mavenCentral()
         google()
         maven("https://raw.githubusercontent.com/MetaCubeX/maven-backup/main/releases")
+    }
+    configurations.configureEach {
+        resolutionStrategy.force(*patchedDependencyCoordinates.toTypedArray())
     }
 
     val isApp = name == "app"
