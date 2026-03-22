@@ -7,19 +7,28 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import androidx.core.content.getSystemService
-import com.github.kr328.clash.design.AccessControlDesign
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.github.kr328.clash.design.compose.ClashTheme
 import com.github.kr328.clash.design.model.AppInfo
+import com.github.kr328.clash.design.model.AppInfoSort
 import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.ui.accesscontrol.AccessControlAppItemUiState
+import com.github.kr328.clash.ui.accesscontrol.AccessControlScreen
+import com.github.kr328.clash.ui.accesscontrol.AccessControlUiState
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class AccessControlActivity : BaseActivity<AccessControlDesign>() {
+class AccessControlActivity : BaseActivity() {
+    private val uiState = MutableStateFlow(AccessControlUiState())
+
     override suspend fun main() {
         val service = ServiceStore(this)
 
@@ -41,79 +50,73 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             }
         }
 
-        val design = AccessControlDesign(this, uiStore, selected)
+        setComposeContent {
+            val state = uiState.collectAsStateWithLifecycle()
 
-        setContentDesign(design)
+            ClashTheme {
+                AccessControlScreen(
+                    title = title?.toString().orEmpty(),
+                    state = state.value,
+                    onBack = onBackPressedDispatcher::onBackPressed,
+                    onToggleApp = { packageName ->
+                        if (selected.contains(packageName)) {
+                            selected.remove(packageName)
+                        } else {
+                            selected.add(packageName)
+                        }
+                        refreshAppSelection(selected)
+                    },
+                    onSelectAll = {
+                        val all = uiState.value.apps.map(AccessControlAppItemUiState::packageName)
+                        selected.clear()
+                        selected.addAll(all)
+                        refreshAppSelection(selected)
+                    },
+                    onSelectNone = {
+                        selected.clear()
+                        refreshAppSelection(selected)
+                    },
+                    onSelectInvert = {
+                        val all = uiState.value.apps.map(AccessControlAppItemUiState::packageName).toSet() - selected
+                        selected.clear()
+                        selected.addAll(all)
+                        refreshAppSelection(selected)
+                    },
+                    onToggleShowSystemApps = {
+                        uiStore.accessControlSystemApp = !uiStore.accessControlSystemApp
+                        launchReload(selected)
+                    },
+                    onSetSort = { sort ->
+                        uiStore.accessControlSort = sort
+                        launchReload(selected)
+                    },
+                    onToggleReverse = {
+                        uiStore.accessControlReverse = !uiStore.accessControlReverse
+                        launchReload(selected)
+                    },
+                    onImportClipboard = {
+                        importClipboard(selected)
+                    },
+                    onExportClipboard = {
+                        exportClipboard(selected)
+                    },
+                    onOpenSearch = {
+                        uiState.update { it.copy(searchOpen = true) }
+                    },
+                    onCloseSearch = {
+                        uiState.update { it.copy(searchOpen = false, searchQuery = "") }
+                    },
+                    onSearchQueryChanged = { keyword ->
+                        uiState.update { it.copy(searchQuery = keyword) }
+                    },
+                )
+            }
+        }
 
-        design.requests.send(AccessControlDesign.Request.ReloadApps)
+        reloadApps(selected)
 
         while (isActive) {
-            select<Unit> {
-                events.onReceive {
-
-                }
-                design.requests.onReceive {
-                    when (it) {
-                        AccessControlDesign.Request.ReloadApps -> {
-                            design.patchApps(loadApps(selected))
-                        }
-
-                        AccessControlDesign.Request.SelectAll -> {
-                            val all = withContext(Dispatchers.Default) {
-                                design.apps.map(AppInfo::packageName)
-                            }
-
-                            selected.clear()
-                            selected.addAll(all)
-
-                            design.rebindAll()
-                        }
-
-                        AccessControlDesign.Request.SelectNone -> {
-                            selected.clear()
-
-                            design.rebindAll()
-                        }
-
-                        AccessControlDesign.Request.SelectInvert -> {
-                            val all = withContext(Dispatchers.Default) {
-                                design.apps.map(AppInfo::packageName).toSet() - selected
-                            }
-
-                            selected.clear()
-                            selected.addAll(all)
-
-                            design.rebindAll()
-                        }
-
-                        AccessControlDesign.Request.Import -> {
-                            val clipboard = getSystemService<ClipboardManager>()
-                            val data = clipboard?.primaryClip
-
-                            if (data != null && data.itemCount > 0) {
-                                val packages = data.getItemAt(0).text.split("\n").toSet()
-                                val all = design.apps.map(AppInfo::packageName).intersect(packages)
-
-                                selected.clear()
-                                selected.addAll(all)
-                            }
-
-                            design.rebindAll()
-                        }
-
-                        AccessControlDesign.Request.Export -> {
-                            val clipboard = getSystemService<ClipboardManager>()
-
-                            val data = ClipData.newPlainText(
-                                "packages",
-                                selected.joinToString("\n")
-                            )
-
-                            clipboard?.setPrimaryClip(data)
-                        }
-                    }
-                }
-            }
+            events.receive()
         }
     }
 
@@ -148,6 +151,63 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                 .sortedWith(comparator)
                 .toList()
         }
+
+    private fun launchReload(selected: Set<String>) {
+        this@AccessControlActivity.launch {
+            reloadApps(selected)
+        }
+    }
+
+    private fun importClipboard(selected: MutableSet<String>) {
+        val clipboard = getSystemService<ClipboardManager>()
+        val data = clipboard?.primaryClip
+
+        if (data != null && data.itemCount > 0) {
+            val packages = data.getItemAt(0).text.split("\n").toSet()
+            val all = uiState.value.apps.map(AccessControlAppItemUiState::packageName).intersect(packages)
+
+            selected.clear()
+            selected.addAll(all)
+            refreshAppSelection(selected)
+        }
+    }
+
+    private fun exportClipboard(selected: Set<String>) {
+        val clipboard = getSystemService<ClipboardManager>()
+        val data = ClipData.newPlainText(
+            "packages",
+            selected.joinToString("\n"),
+        )
+
+        clipboard?.setPrimaryClip(data)
+    }
+
+    private fun refreshAppSelection(selected: Set<String>) {
+        uiState.update { state ->
+            state.copy(
+                apps = state.apps.map { app ->
+                    app.copy(selected = app.packageName in selected)
+                },
+            )
+        }
+    }
+
+    private suspend fun reloadApps(selected: Set<String>) {
+        uiState.value = AccessControlUiState(
+            apps = loadApps(selected).map {
+                AccessControlAppItemUiState(
+                    packageName = it.packageName,
+                    label = it.label,
+                    selected = it.packageName in selected,
+                )
+            },
+            sort = uiStore.accessControlSort,
+            reverse = uiStore.accessControlReverse,
+            showSystemApps = uiStore.accessControlSystemApp,
+            searchQuery = uiState.value.searchQuery,
+            searchOpen = uiState.value.searchOpen,
+        )
+    }
 
     private val PackageInfo.isSystemApp: Boolean
         get() {

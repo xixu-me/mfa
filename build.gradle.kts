@@ -2,6 +2,8 @@
 
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.BaseExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
 import java.util.*
 
@@ -250,12 +252,6 @@ subprojects {
             }
         }
 
-        buildFeatures.apply {
-            dataBinding {
-                isEnabled = name != "hideapi"
-            }
-        }
-
         if (isApp) {
             this as AppExtension
 
@@ -272,6 +268,12 @@ subprojects {
         compileOptions {
             sourceCompatibility = JavaVersion.VERSION_21
             targetCompatibility = JavaVersion.VERSION_21
+        }
+    }
+
+    tasks.withType<KotlinCompile>().configureEach {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_21)
         }
     }
 }

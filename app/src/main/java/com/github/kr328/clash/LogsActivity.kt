@@ -2,57 +2,83 @@ package com.github.kr328.clash
 
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setFileName
-import com.github.kr328.clash.design.LogsDesign
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.github.kr328.clash.design.compose.ClashTheme
 import com.github.kr328.clash.design.model.LogFile
+import com.github.kr328.clash.design.util.format
+import com.github.kr328.clash.ui.logs.LogFileItemUiState
+import com.github.kr328.clash.ui.logs.LogsScreen
+import com.github.kr328.clash.ui.logs.LogsUiState
 import com.github.kr328.clash.util.logsDir
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 
-class LogsActivity : BaseActivity<LogsDesign>() {
+class LogsActivity : BaseActivity() {
+    private val uiState = MutableStateFlow(LogsUiState())
 
     override suspend fun main() {
-        val design = LogsDesign(this)
+        setComposeContent {
+            val state = uiState.collectAsStateWithLifecycle()
+            val snackbarHostState = remember { SnackbarHostState() }
 
-        setContentDesign(design)
+            ClashTheme {
+                LogsScreen(
+                    title = title?.toString().orEmpty(),
+                    state = state.value,
+                    onBack = onBackPressedDispatcher::onBackPressed,
+                    onStartLogcat = {
+                        startActivity(LogcatActivity::class.intent)
+                        finish()
+                    },
+                    onDeleteAll = {
+                        this@LogsActivity.launch {
+                            withContext(Dispatchers.IO) {
+                                deleteAllLogs()
+                            }
+
+                            uiState.value = LogsUiState()
+                            refreshFiles()
+                        }
+                    },
+                    onOpenFile = { fileName ->
+                        startActivity(LogcatActivity::class.intent.setFileName(fileName))
+                    },
+                    snackbarHostState = snackbarHostState,
+                )
+            }
+        }
 
         while (isActive) {
             select<Unit> {
                 events.onReceive {
                     when (it) {
                         Event.ActivityStart -> {
-                            val files = withContext(Dispatchers.IO) {
-                                loadFiles()
-                            }
-
-                            design.patchLogs(files)
+                            refreshFiles()
                         }
                         else -> Unit
                     }
                 }
-                design.requests.onReceive {
-                    when (it) {
-                        LogsDesign.Request.StartLogcat -> {
-                            startActivity(LogcatActivity::class.intent)
-                            finish()
-                        }
-                        LogsDesign.Request.DeleteAll -> {
-                            if (design.requestDeleteAll()) {
-                                withContext(Dispatchers.IO) {
-                                    deleteAllLogs()
-                                }
-
-                                events.trySend(Event.ActivityStart)
-                            }
-                        }
-                        is LogsDesign.Request.OpenFile -> {
-                            startActivity(LogcatActivity::class.intent.setFileName(it.file.fileName))
-                        }
-                    }
-                }
             }
         }
+    }
+
+    private suspend fun refreshFiles() {
+        uiState.value = LogsUiState(
+            files = withContext(Dispatchers.IO) {
+                loadFiles().map {
+                    LogFileItemUiState(
+                        fileName = it.fileName,
+                        summary = it.date.format(this@LogsActivity),
+                    )
+                }
+            },
+        )
     }
 
     private fun loadFiles(): List<LogFile> {

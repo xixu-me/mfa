@@ -1,19 +1,20 @@
 package com.github.kr328.clash
 
 import android.app.ActivityManager
+import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
-import android.view.View
+import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.Composable
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.compat.isAllowForceDarkCompat
 import com.github.kr328.clash.common.compat.isLightNavigationBarCompat
 import com.github.kr328.clash.common.compat.isLightStatusBarsCompat
 import com.github.kr328.clash.common.compat.isSystemBarsTranslucentCompat
 import com.github.kr328.clash.core.bridge.ClashException
-import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.DayNight
@@ -32,7 +33,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import com.github.kr328.clash.design.R
 
-abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
+abstract class BaseActivity : AppCompatActivity(),
     CoroutineScope by MainScope(),
     Broadcasts.Observer {
     
@@ -41,15 +42,18 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     protected var activityStarted: Boolean = false
     protected val clashRunning: Boolean
         get() = Remote.broadcasts.clashRunning
-    protected var design: D? = null
-        set(value) {
-            field = value
-            if (value != null) {
-                setContentView(value.root)
-            } else {
-                setContentView(View(this))
+
+    protected suspend fun setComposeContent(content: @Composable () -> Unit) {
+        suspendCoroutine<Unit> {
+            window.decorView.post {
+                setContent {
+                    content()
+                }
+
+                it.resume(Unit)
             }
         }
+    }
 
     private var defer: suspend () -> Unit = {}
     private var deferRunning = false
@@ -73,15 +77,6 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
                 activityResultRegistry.register(requestKey, lifecycle, contracts) {
                     c.resume(it)
                 }.apply { start() }.launch(input)
-            }
-        }
-    }
-
-    suspend fun setContentDesign(design: D) {
-        suspendCoroutine<Unit> {
-            window.decorView.post {
-                this.design = design
-                it.resume(Unit)
             }
         }
     }
@@ -115,7 +110,6 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     }
 
     override fun onDestroy() {
-        design?.cancel()
         cancel()
         super.onDestroy()
     }
@@ -183,7 +177,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
 
         if (cause != null && activityStarted) {
             launch {
-                design?.showExceptionToast(ClashException(cause))
+                showExceptionToast(ClashException(cause))
             }
         }
     }

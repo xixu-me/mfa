@@ -1,23 +1,23 @@
 package com.github.kr328.clash
 
-import android.content.pm.PackageManager
-import com.github.kr328.clash.common.compat.getDrawableCompat
-import com.github.kr328.clash.common.constants.Metadata
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.kr328.clash.core.Clash
-import com.github.kr328.clash.design.OverrideSettingsDesign
-import com.github.kr328.clash.design.model.AppInfo
-import com.github.kr328.clash.design.util.toAppInfo
-import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.core.model.ConfigurationOverride
+import com.github.kr328.clash.design.compose.ClashTheme
+import com.github.kr328.clash.ui.settings.override.OverrideSettingsScreen
+import com.github.kr328.clash.ui.settings.override.OverrideSettingsUiState
 import com.github.kr328.clash.util.withClash
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.selects.select
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.MutableStateFlow
 
-class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
+class OverrideSettingsActivity : BaseActivity() {
+    private lateinit var configuration: ConfigurationOverride
+    private val uiState = MutableStateFlow(OverrideSettingsUiState(configuration = ConfigurationOverride()))
+
     override suspend fun main() {
-        val configuration = withClash { queryOverride(Clash.OverrideSlot.Persist) }
-        val service = ServiceStore(this)
+        configuration = withClash { queryOverride(Clash.OverrideSlot.Persist) }
 
         defer {
             withClash {
@@ -25,34 +25,47 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             }
         }
 
-        val design = OverrideSettingsDesign(
-            this,
-            configuration
-        )
+        refreshState()
 
-        setContentDesign(design)
+        setComposeContent {
+            val state = uiState.collectAsStateWithLifecycle()
+            val snackbarHostState = remember { SnackbarHostState() }
 
-        while (isActive) {
-            select<Unit> {
-                events.onReceive {
-
-                }
-                design.requests.onReceive {
-                    when (it) {
-                        OverrideSettingsDesign.Request.ResetOverride -> {
-                            if (design.requestResetConfirm()) {
-                                defer {
-                                    withClash {
-                                        clearOverride(Clash.OverrideSlot.Persist)
-                                    }
-                                }
-
-                                finish()
+            ClashTheme {
+                OverrideSettingsScreen(
+                    title = title?.toString().orEmpty(),
+                    state = state.value,
+                    onBack = onBackPressedDispatcher::onBackPressed,
+                    onResetRequested = {
+                        uiState.value = uiState.value.copy(showResetConfirm = true)
+                    },
+                    onResetDismissed = {
+                        uiState.value = uiState.value.copy(showResetConfirm = false)
+                    },
+                    onResetConfirmed = {
+                        defer {
+                            withClash {
+                                clearOverride(Clash.OverrideSlot.Persist)
                             }
                         }
-                    }
-                }
+                        finish()
+                    },
+                    onConfigurationChanged = {
+                        configuration.apply(it)
+                        refreshState()
+                    },
+                    snackbarHostState = snackbarHostState,
+                )
             }
         }
+
+        awaitCancellation()
+    }
+
+    private fun refreshState() {
+        uiState.value = OverrideSettingsUiState(
+            configuration = configuration,
+            showResetConfirm = uiState.value.showResetConfirm,
+        )
     }
 }

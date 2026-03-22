@@ -3,34 +3,69 @@ package com.github.kr328.clash
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.PersistableBundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.ticker
-import com.github.kr328.clash.design.MainDesign
-import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.core.bridge.*
+import com.github.kr328.clash.core.model.TunnelState
+import com.github.kr328.clash.core.util.trafficTotal
+import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.ClashTheme
+import com.github.kr328.clash.ui.main.MainScreen
+import com.github.kr328.clash.ui.main.MainSnackbarAction
+import com.github.kr328.clash.ui.main.MainSnackbarEvent
+import com.github.kr328.clash.ui.main.MainUiState
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
 import com.github.kr328.clash.util.withProfile
-import com.github.kr328.clash.core.bridge.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
-import com.github.kr328.clash.design.R
 
-class MainActivity : BaseActivity<MainDesign>() {
+class MainActivity : BaseActivity() {
+    private val uiState = MutableStateFlow(MainUiState())
+    private val snackbarEvents = MutableSharedFlow<MainSnackbarEvent>(extraBufferCapacity = 8)
+
     override suspend fun main() {
-        val design = MainDesign(this)
+        setComposeContent {
+            val state = uiState.collectAsStateWithLifecycle()
 
-        setContentDesign(design)
+            ClashTheme {
+                MainScreen(
+                    state = state.value,
+                    snackbarEvents = snackbarEvents,
+                    onToggleStatus = { this@MainActivity.launchToggle() },
+                    onOpenProxy = { startActivity(ProxyActivity::class.intent) },
+                    onOpenProfiles = { startActivity(ProfilesActivity::class.intent) },
+                    onOpenProviders = { startActivity(ProvidersActivity::class.intent) },
+                    onOpenLogs = {
+                        if (LogcatService.running) {
+                            startActivity(LogcatActivity::class.intent)
+                        } else {
+                            startActivity(LogsActivity::class.intent)
+                        }
+                    },
+                    onOpenSettings = { startActivity(SettingsActivity::class.intent) },
+                    onOpenHelp = { startActivity(HelpActivity::class.intent) },
+                    onOpenAbout = { this@MainActivity.launchAbout() },
+                    onDismissAbout = {
+                        uiState.value = uiState.value.copy(aboutVersionName = null)
+                    },
+                )
+            }
+        }
 
-        design.fetch()
+        refreshMainState()
 
         val ticker = ticker(TimeUnit.SECONDS.toMillis(1))
 
@@ -41,82 +76,81 @@ class MainActivity : BaseActivity<MainDesign>() {
                         Event.ActivityStart,
                         Event.ServiceRecreated,
                         Event.ClashStop, Event.ClashStart,
-                        Event.ProfileLoaded, Event.ProfileChanged -> design.fetch()
+                        Event.ProfileLoaded, Event.ProfileChanged -> refreshMainState()
                         else -> Unit
-                    }
-                }
-                design.requests.onReceive {
-                    when (it) {
-                        MainDesign.Request.ToggleStatus -> {
-                            if (clashRunning)
-                                stopClashService()
-                            else
-                                design.startClash()
-                        }
-                        MainDesign.Request.OpenProxy ->
-                            startActivity(ProxyActivity::class.intent)
-                        MainDesign.Request.OpenProfiles ->
-                            startActivity(ProfilesActivity::class.intent)
-                        MainDesign.Request.OpenProviders ->
-                            startActivity(ProvidersActivity::class.intent)
-                        MainDesign.Request.OpenLogs -> {
-                            if (LogcatService.running) {
-                                startActivity(LogcatActivity::class.intent)
-                            } else {
-                                startActivity(LogsActivity::class.intent)
-                            }
-                        }
-                        MainDesign.Request.OpenSettings ->
-                            startActivity(SettingsActivity::class.intent)
-                        MainDesign.Request.OpenHelp ->
-                            startActivity(HelpActivity::class.intent)
-                        MainDesign.Request.OpenAbout ->
-                            design.showAbout(queryAppVersionName())
                     }
                 }
                 if (clashRunning) {
                     ticker.onReceive {
-                        design.fetchTraffic()
+                        refreshTraffic()
                     }
                 }
             }
         }
     }
 
-    private suspend fun MainDesign.fetch() {
-        setClashRunning(clashRunning)
-
-        val state = withClash {
+    private suspend fun refreshMainState() {
+        val tunnelState = withClash {
             queryTunnelState()
         }
         val providers = withClash {
             queryProviders()
         }
+        val profileName = withProfile {
+            queryActive()?.name
+        }
 
-        setMode(state.mode)
-        setHasProviders(providers.isNotEmpty())
+        uiState.value = uiState.value.copy(
+            clashRunning = clashRunning,
+            mode = tunnelState.mode.displayName(this),
+            hasProviders = providers.isNotEmpty(),
+            profileName = profileName,
+        )
 
-        withProfile {
-            setProfileName(queryActive()?.name)
+        if (clashRunning) {
+            refreshTraffic()
+        } else {
+            uiState.value = uiState.value.copy(forwarded = "0 Bytes")
         }
     }
 
-    private suspend fun MainDesign.fetchTraffic() {
-        withClash {
-            setForwarded(queryTrafficTotal())
+    private suspend fun refreshTraffic() {
+        uiState.value = uiState.value.copy(
+            forwarded = withClash {
+                queryTrafficTotal().trafficTotal()
+            },
+        )
+    }
+
+    private fun launchToggle() {
+        this@MainActivity.launch {
+            if (clashRunning) {
+                stopClashService()
+            } else {
+                startClash()
+            }
         }
     }
 
-    private suspend fun MainDesign.startClash() {
+    private fun launchAbout() {
+        this@MainActivity.launch {
+            uiState.value = uiState.value.copy(
+                aboutVersionName = queryAppVersionName(),
+            )
+        }
+    }
+
+    private suspend fun startClash() {
         val active = withProfile { queryActive() }
 
         if (active == null || !active.imported) {
-            showToast(R.string.no_profile_selected, ToastDuration.Long) {
-                setAction(R.string.profiles) {
-                    startActivity(ProfilesActivity::class.intent)
-                }
-            }
-
+            snackbarEvents.tryEmit(
+                MainSnackbarEvent(
+                    message = getString(R.string.no_profile_selected),
+                    actionLabel = getString(R.string.profiles),
+                    action = MainSnackbarAction.OpenProfiles,
+                ),
+            )
             return
         }
 
@@ -133,7 +167,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                     startClashService()
             }
         } catch (e: Exception) {
-            design?.showToast(R.string.unable_to_start_vpn, ToastDuration.Long)
+            snackbarEvents.tryEmit(
+                MainSnackbarEvent(
+                    message = getString(R.string.unable_to_start_vpn),
+                ),
+            )
         }
     }
 
@@ -157,6 +195,15 @@ class MainActivity : BaseActivity<MainDesign>() {
                 requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+    }
+}
+
+private fun TunnelState.Mode.displayName(activity: MainActivity): String {
+    return when (this) {
+        TunnelState.Mode.Direct -> activity.getString(R.string.direct_mode)
+        TunnelState.Mode.Global -> activity.getString(R.string.global_mode)
+        TunnelState.Mode.Rule,
+        TunnelState.Mode.Script -> activity.getString(R.string.rule_mode)
     }
 }
 

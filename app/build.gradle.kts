@@ -4,8 +4,14 @@ import java.nio.file.StandardCopyOption
 
 plugins {
     kotlin("android")
-    kotlin("kapt")
+    id("org.jetbrains.kotlin.plugin.compose") version "2.1.0"
     id("com.android.application")
+}
+
+android {
+    buildFeatures {
+        compose = true
+    }
 }
 
 dependencies {
@@ -19,13 +25,23 @@ dependencies {
     implementation(libs.kotlin.coroutine)
     implementation(libs.androidx.core)
     implementation(libs.androidx.activity)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.fragment)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.coordinator)
     implementation(libs.androidx.recyclerview)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.google.material)
     implementation(libs.quickie.bundled)
     implementation(libs.androidx.activity.ktx)
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
 tasks.getByName("clean", type = Delete::class) {
