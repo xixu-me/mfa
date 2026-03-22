@@ -5,6 +5,9 @@ on:
       - core-updated
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   update-dependencies:
     runs-on: ubuntu-latest
