@@ -105,11 +105,11 @@ jobs:
         run: ./gradlew --no-daemon app:assembleMetaRelease
 
       - name: Tag Repo
-        uses: richardsimko/update-tag@v1
-        with:
-          tag_name: ${{ inputs.release-tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa "${{ inputs.release-tag }}" -m "${{ inputs.release-tag }}"
+          git push origin "refs/tags/${{ inputs.release-tag }}" --force
 
       - name: Upload Release
         uses: softprops/action-gh-release@v1
@@ -118,13 +118,3 @@ jobs:
           tag_name: ${{ inputs.release-tag }}
           files: app/build/outputs/apk/meta/release/*
           generate_release_notes: true
-
-      - name: Release Changelog Builder
-        uses: mikepenz/release-changelog-builder-action@v4.1.1
-        with:
-          configurationJson: |
-            {
-              "ignore_labels": [
-                "Update"
-              ],
-            }
