@@ -18,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import com.github.kr328.clash.design.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,13 +40,13 @@ fun ClashScaffold(
                         IconButton(onClick = onBack) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_baseline_arrow_back),
-                                contentDescription = stringResource(R.string.back),
+                                contentDescription = null,
                             )
                         }
                     }
                 },
                 actions = actions,
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(),
+                colors = TopAppBarDefaults.topAppBarColors(),
             )
         },
         snackbarHost = {

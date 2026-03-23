@@ -6,10 +6,11 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.common.util.intent
+import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.model.Profile
-import com.github.kr328.clash.ui.app.AppRouteIntent
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withProfile
@@ -43,7 +44,7 @@ class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
                             patch(it, name, url, 0)
                         }
                     }
-                    startActivity(AppRouteIntent.mainActivity(AppRouteIntent.properties(uuid.toString())))
+                    startActivity(PropertiesActivity::class.intent.setUUID(uuid))
                     finish()
                 }
             }

@@ -1,5 +1,6 @@
 package com.github.kr328.clash.common.compat
 
+import android.app.ActivityThread
 import android.app.Application
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
@@ -12,10 +13,7 @@ val Application.currentProcessName: String
             return Application.getProcessName()
 
         return try {
-            val activityThreadClass = Class.forName("android.app.ActivityThread")
-            val method = activityThreadClass.getDeclaredMethod("currentProcessName")
-            method.isAccessible = true
-            method.invoke(null) as? String ?: packageName
+            ActivityThread.currentProcessName()
         } catch (throwable: Throwable) {
             Log.w("Resolve process name: $throwable")
 

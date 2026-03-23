@@ -30,9 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.ClashScaffold
@@ -182,7 +179,6 @@ private fun FileRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { role = Role.Button }
             .clickable(onClick = onOpen)
             .padding(
                 horizontal = dimensionResource(R.dimen.item_header_margin),
@@ -223,7 +219,7 @@ private fun FileRow(
         IconButton(onClick = onMore) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_baseline_more_vert),
-                contentDescription = stringResource(id = R.string.more),
+                contentDescription = null,
             )
         }
     }
