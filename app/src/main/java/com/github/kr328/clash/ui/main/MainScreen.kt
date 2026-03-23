@@ -31,6 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.ClashTheme
@@ -204,6 +207,7 @@ private fun MainCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .semantics { role = Role.Button }
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = if (highlighted) {
@@ -254,6 +258,7 @@ private fun MainLabel(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .semantics { role = Role.Button }
             .clickable(onClick = onClick)
             .padding(
                 horizontal = dimensionResource(R.dimen.item_header_margin),

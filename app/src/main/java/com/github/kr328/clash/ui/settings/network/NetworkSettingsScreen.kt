@@ -24,7 +24,7 @@ import com.github.kr328.clash.service.model.AccessControlMode
 fun NetworkSettingsScreen(
     title: String,
     state: NetworkSettingsUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onEnableVpnChange: (Boolean) -> Unit,
     onBypassPrivateNetworkChange: (Boolean) -> Unit,
     onDnsHijackingChange: (Boolean) -> Unit,

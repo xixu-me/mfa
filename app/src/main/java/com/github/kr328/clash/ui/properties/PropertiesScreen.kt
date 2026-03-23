@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit
 fun PropertiesScreen(
     title: String,
     state: PropertiesUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onSave: () -> Unit,
     onOpenFiles: () -> Unit,
     onNameChanged: (String) -> Unit,

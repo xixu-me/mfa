@@ -23,7 +23,7 @@ import com.github.kr328.clash.design.model.DarkMode
 fun AppSettingsScreen(
     title: String,
     state: AppSettingsUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onAutoRestartChange: (Boolean) -> Unit,
     onDarkModeChange: (DarkMode) -> Unit,
     onHideAppIconChange: (Boolean) -> Unit,

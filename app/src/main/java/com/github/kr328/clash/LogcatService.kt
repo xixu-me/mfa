@@ -24,6 +24,8 @@ import com.github.kr328.clash.service.RemoteService
 import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.remote.IRemoteService
 import com.github.kr328.clash.service.remote.unwrap
+import com.github.kr328.clash.ui.app.AppRoute
+import com.github.kr328.clash.ui.app.AppRouteIntent
 import com.github.kr328.clash.util.logsDir
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -146,7 +148,7 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
                 PendingIntent.getActivity(
                     this,
                     R.id.nf_logcat_status,
-                    LogcatActivity::class.intent
+                    AppRouteIntent.mainActivity(AppRoute.LiveLogcat.route)
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                     pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
                 )

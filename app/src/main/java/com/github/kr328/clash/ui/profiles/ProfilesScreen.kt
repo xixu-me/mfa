@@ -25,6 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.ClashScaffold
@@ -39,6 +43,8 @@ fun ProfilesScreen(
     onBack: () -> Unit,
     onCreate: () -> Unit,
     onUpdateAll: () -> Unit,
+    selectedProfileId: String? = null,
+    onSelect: (String) -> Unit,
     onActivate: (String) -> Unit,
     onOpenMenu: (String) -> Unit,
     onDismissMenu: () -> Unit,
@@ -65,7 +71,7 @@ fun ProfilesScreen(
                     IconButton(onClick = onUpdateAll) {
                         Icon(
                             painter = painterResource(R.drawable.ic_baseline_sync),
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.update),
                         )
                     }
                 }
@@ -73,7 +79,7 @@ fun ProfilesScreen(
             IconButton(onClick = onCreate) {
                 Icon(
                     painter = painterResource(R.drawable.ic_baseline_add),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.create_profile),
                 )
             }
         },
@@ -86,7 +92,9 @@ fun ProfilesScreen(
             items(state.profiles, key = ProfileItemUiState::id) { profile ->
                 ProfileRow(
                     profile = profile,
-                    onClick = { onActivate(profile.id) },
+                    selected = profile.id == selectedProfileId,
+                    onClick = { onSelect(profile.id) },
+                    onActivate = { onActivate(profile.id) },
                     onMore = { onOpenMenu(profile.id) },
                 )
             }
@@ -138,7 +146,9 @@ fun ProfilesScreen(
 @Composable
 private fun ProfileRow(
     profile: ProfileItemUiState,
+    selected: Boolean,
     onClick: () -> Unit,
+    onActivate: () -> Unit,
     onMore: () -> Unit,
 ) {
     Card(
@@ -148,10 +158,21 @@ private fun ProfileRow(
                 horizontal = dimensionResource(R.dimen.item_header_margin),
                 vertical = dimensionResource(R.dimen.item_text_margin),
             ),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        ),
     ) {
         androidx.compose.foundation.layout.Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .semantics(mergeDescendants = true) {
+                    role = Role.Button
+                    this.selected = selected
+                }
                 .clickable(onClick = onClick)
                 .padding(
                     horizontal = dimensionResource(R.dimen.item_header_margin),
@@ -162,7 +183,7 @@ private fun ProfileRow(
         ) {
             RadioButton(
                 selected = profile.active,
-                onClick = null,
+                onClick = onActivate,
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -202,7 +223,7 @@ private fun ProfileRow(
             IconButton(onClick = onMore) {
                 Icon(
                     painter = painterResource(R.drawable.ic_baseline_more_vert),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.more),
                 )
             }
         }
@@ -235,6 +256,7 @@ private fun ProfilesScreenPreview() {
             onBack = {},
             onCreate = {},
             onUpdateAll = {},
+            onSelect = {},
             onActivate = {},
             onOpenMenu = {},
             onDismissMenu = {},

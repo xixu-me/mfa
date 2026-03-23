@@ -78,14 +78,14 @@ fun AccessControlScreen(
             IconButton(onClick = onOpenSearch) {
                 Icon(
                     painter = painterResource(R.drawable.ic_baseline_search),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.search),
                 )
             }
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_baseline_more_vert),
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.more),
                     )
                 }
 
@@ -320,7 +320,7 @@ private fun SearchDialog(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             painter = painterResource(R.drawable.ic_baseline_close),
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.close),
                         )
                     }
                     TextField(

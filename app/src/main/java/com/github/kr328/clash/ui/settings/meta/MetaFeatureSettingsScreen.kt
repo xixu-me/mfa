@@ -32,7 +32,7 @@ import com.github.kr328.clash.design.compose.dependencyEnabled
 fun MetaFeatureSettingsScreen(
     title: String,
     state: MetaFeatureSettingsUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onResetRequested: () -> Unit,
     onResetDismissed: () -> Unit,
     onResetConfirmed: () -> Unit,
